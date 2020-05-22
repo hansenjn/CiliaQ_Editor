@@ -1,5 +1,5 @@
 # CiliaQ_Editor
-An ImageJ plugin to edit the segmented channel in images output by [CiliaQ_Preparator](https://github.com/hansenjn/CiliaQ_Preparator) before analysis with [CiliaQ](https://github.com/hansenjn/CiliaQ).
+An ImageJ plugin to edit the segmented channel in images output by [CiliaQ_Preparator](https://github.com/hansenjn/CiliaQ_Preparator) before analysis with [CiliaQ](https://github.com/hansenjn/CiliaQ). Download the latest version of CiliaQ_Editor from the [Release page](https://github.com/hansenjn/CiliaQ_Editor/releases).
 
 Copyright (C) 2020: Jan N. Hansen. CiliaQ_Editor has been developed in the research group [Biophysical Imaging, Institute of Innate Immunity, Bonn, Germany](http://www.iii.uni-bonn.de/en/wachten_lab/).
 
