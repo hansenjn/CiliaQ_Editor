@@ -333,6 +333,10 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 					remove(rois.get(i), slices.get(i), frames.get(i));
 				}
 			}
+			
+			if(rois.size()==0){
+				undoButton.setEnabled(false);
+			}
 		}
 	}
 	
