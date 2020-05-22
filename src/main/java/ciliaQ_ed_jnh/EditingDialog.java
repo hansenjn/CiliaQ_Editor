@@ -6,7 +6,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.Date;
 import java.util.LinkedList;
@@ -19,10 +18,10 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
+
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
-import ij.gui.WaitForUserDialog;
 import ij.gui.YesNoCancelDialog;
 import ij.io.FileInfo;
 import ij.io.RoiEncoder;
@@ -30,7 +29,7 @@ import ij.text.TextPanel;
 
 public class EditingDialog extends javax.swing.JFrame implements ActionListener {
 	/** ===============================================================================
-	* Part of CiliaQ_Editor Version 0.0.1
+	* Part of CiliaQ_Editor Version 0.0.2
 	* 
 	* This program is free software; you can redistribute it and/or
 	* modify it under the terms of the GNU General Public License
@@ -44,7 +43,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	* See the GNU General Public License for more details.
 	*  
 	* Copyright (C) @author Jan Niklas Hansen
-	* Date: May 16, 2020 (This Version: May 16, 2020)
+	* Date: May 16, 2020 (This Version: May 22, 2020)
 	*   
 	* For any questions please feel free to contact me (jan.hansen@uni-bonn.de).
 	* =============================================================================== */
@@ -220,7 +219,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 				finishButton = new JButton();
 				finishButton.addActionListener(this);
 				finishButton.setText("finish analysis & save editings");
-				finishButton.setFont(CiliaQEdMain.TextFont);
+				finishButton.setFont(CiliaQEdMain.BoldFont);
 				finishButton.setMinimumSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
 				finishButton.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
 				finishButton.setAlignmentX(CENTER_ALIGNMENT);
@@ -238,7 +237,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 				cancelButton = new JButton();
 				cancelButton.addActionListener(this);
 				cancelButton.setText("abort analysis & discard editings");
-				cancelButton.setFont(CiliaQEdMain.TextFont);
+				cancelButton.setFont(CiliaQEdMain.BoldFont);
 				cancelButton.setMinimumSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
 				cancelButton.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
 				cancelButton.setAlignmentX(CENTER_ALIGNMENT);
@@ -246,8 +245,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 				cancelButton.setHorizontalAlignment(SwingConstants.CENTER);
 				cancelButton.setVerticalAlignment(SwingConstants.CENTER);
 				cancelButton.setVisible(true);
-				cancelButton.setBackground(Color.red);
-				cancelButton.setForeground(Color.white);
+				cancelButton.setForeground(Color.red);
 				JPanel buttonPanel = new JPanel();
 				buttonPanel.setLayout(new BorderLayout());
 				buttonPanel.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
@@ -307,15 +305,34 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	private void undo(){
 		if(rois.size()>0){
-			if(added.get(added.size()-1)){
-				remove(rois.get(rois.size()-1), slices.get(slices.size()-1), frames.get(frames.size()-1));
-			}else{
-				copy(rois.get(rois.size()-1), slices.get(slices.size()-1), frames.get(frames.size()-1));
+			for(int i = 0; i < rois.size(); i++){
+				Roi roi = rois.get(i);
+				int s = slices.get(i);
+				int t = frames.get(i);
+				int indexCopy = impCopy.getStackIndex(mask, s, t)-1;
+				int indexPaste = imp.getStackIndex(mask, s, t)-1;
+				
+				Rectangle r = roi.getBounds();
+		   		for(int x = r.x; x <= r.x+r.width && x < imp.getWidth(); x++){
+		   			if(x < 0) x = 0;
+		   			for(int y = r.y; y <= r.y+r.height && y < imp.getHeight(); y++){
+		   				if(y < 0) y = 0;
+		   				if(roi.contains(x, y)){
+		   						imp.getStack().setVoxel(x, y, indexPaste,
+		   	   						impCopy.getStack().getVoxel(x, y, indexCopy));
+		   				}
+					}	
+				}
 			}
-			removeLastRoi();
-		}
-		if(rois.size()==0){
-			undoButton.setEnabled(false);
+			
+			removeLastRoi();			
+			for(int i = 0; i < rois.size(); i++){
+				if(added.get(i)){
+					copy(rois.get(i), slices.get(i), frames.get(i));
+				}else{
+					remove(rois.get(i), slices.get(i), frames.get(i));
+				}
+			}
 		}
 	}
 	
@@ -400,7 +417,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
    			if(x < 0) x = 0;
    			for(int y = r.y; y <= r.y+r.height && y < imp.getHeight(); y++){
    				if(y < 0) y = 0;
-   				if(r.contains(x, y)){
+   				if(roi.contains(x, y)){
    					if(binary){
    						if(imp.getStack().getVoxel(x, y, indexCopy) != 0.0){
    	   	   					imp.getStack().setVoxel(x, y, indexPaste, max);   							
@@ -421,7 +438,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
    			if(x < 0) x = 0;
    			for(int y = r.y; y <= r.y+r.height && y < imp.getHeight(); y++){
    				if(y < 0) y = 0;
-   				if(r.contains(x, y)){
+   				if(roi.contains(x, y)){
    					imp.getStack().setVoxel(x, y, indexPaste,0.0);
    				}
 			}	
@@ -429,7 +446,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	}
 	
 	private void saveStep(Roi roi, boolean add, int slice, int frame){
-		rois.add(roi);
+		rois.add((Roi)((Object)roi.clone()));
 		added.add(add);
 		slices.add(slice);
 		frames.add(frame);
