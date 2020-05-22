@@ -109,8 +109,13 @@ public void run(String arg) {
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 //---------------------end-GenericDialog-end----------------------------------
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-	ImagePlus imp = WindowManager.getCurrentImage();
+	ImagePlus imp;
+	try{
+		imp = WindowManager.getCurrentImage();
+	}catch(Exception e){
+		IJ.error("No image open.");
+		return;
+	}
 	ImagePlus impCopy = imp.duplicate();
 	
 	//Do editing
