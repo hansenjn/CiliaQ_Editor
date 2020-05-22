@@ -109,14 +109,14 @@ public void run(String arg) {
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 //---------------------end-GenericDialog-end----------------------------------
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-	ImagePlus imp;
+	ImagePlus imp, impCopy;
 	try{
 		imp = WindowManager.getCurrentImage();
+		impCopy = imp.duplicate();
 	}catch(Exception e){
 		IJ.error("No image open.");
 		return;
 	}
-	ImagePlus impCopy = imp.duplicate();
 	
 	//Do editing
 	EdDialog = new EditingDialog(imp, impCopy, channelMask, channelForCopying, chosenOutputName);
