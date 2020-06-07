@@ -29,7 +29,7 @@ import ij.text.TextPanel;
 
 public class EditingDialog extends javax.swing.JFrame implements ActionListener {
 	/** ===============================================================================
-	* Part of CiliaQ_Editor Version 0.0.2
+	* Part of CiliaQ_Editor Version 0.0.3
 	* 
 	* This program is free software; you can redistribute it and/or
 	* modify it under the terms of the GNU General Public License
@@ -43,7 +43,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	* See the GNU General Public License for more details.
 	*  
 	* Copyright (C) @author Jan Niklas Hansen
-	* Date: May 16, 2020 (This Version: May 22, 2020)
+	* Date: May 16, 2020 (This Version: June 07, 2020)
 	*   
 	* For any questions please feel free to contact me (jan.hansen@uni-bonn.de).
 	* =============================================================================== */
@@ -369,7 +369,13 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		try{
 			new File(outputPath).mkdirs();
 			for(int i = 0; i < rois.size(); i++){
-				re = new RoiEncoder(outputPath + System.getProperty("file.separator") + (i+1) + ".roi");
+				if(added.get(i)){
+					re = new RoiEncoder(outputPath + System.getProperty("file.separator") + (i+1) 
+							+ "_s" + slices.get(i) + "_t" + frames.get(i) + "_add.roi");
+				}else{
+					re = new RoiEncoder(outputPath + System.getProperty("file.separator") + (i+1) 
+							+ "_s" + slices.get(i) + "_t" + frames.get(i) + "_rem.roi");					
+				}
 				re.write(rois.get(i));				
 			}
 		}catch(Exception e){
@@ -390,6 +396,10 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	}
 	
 	public void closedWindow(){
+		if(rois.size()==0){
+			running = false;
+			return;
+		}
 		YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - abort?","You closed the image.\nRestore the image with editings to continue editing (Yes, Cancel)?\nOr stop editing without saving editings (No)?");
 		if(!ync.yesPressed() && !ync.cancelPressed()){
 			running = false;

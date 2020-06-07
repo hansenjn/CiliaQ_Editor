@@ -1,6 +1,6 @@
 package ciliaQ_ed_jnh;
 /** ===============================================================================
-* CiliaQ_Editor Version 0.0.2
+* CiliaQ_Editor Version 0.0.3
 * 
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU General Public License
@@ -14,7 +14,7 @@ package ciliaQ_ed_jnh;
 * See the GNU General Public License for more details.
 *  
 * Copyright (C) @author Jan Niklas Hansen
-* Date: May 16, 2020 (This Version: May 22, 2020)
+* Date: May 16, 2020 (This Version: June 07, 2020)
 *   
 * For any questions please feel free to contact me (jan.hansen@uni-bonn.de).
 * =============================================================================== */
