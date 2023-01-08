@@ -3,15 +3,17 @@
 	<modelVersion>4.0.0</modelVersion>
   
 	<parent>
-		<groupId>sc.fiji</groupId>
-		<artifactId>pom-fiji</artifactId>
-		<version>17.0.0</version>
+		<groupId>org.scijava</groupId>
+		<artifactId>pom-scijava</artifactId>
+		<version>17.1.1</version>
 		<relativePath />
 	</parent> 
  
  	<artifactId>CiliaQ_Editor_JNH</artifactId>
  	<groupId>JNH</groupId>
-    <version>0.0.3-SNAPSHOT</version>
+    <version>0.0.4-SNAPSHOT</version>
+    <name>CiliaQ_Editor</name>
+    <description>A plugin to manually edit cilia segmentations produced with CiliaQ Preparator.</description>
  
 <!-- Plugin Information -->
  	<url>https://github.com/hansenjn/</url>
@@ -32,9 +34,9 @@
 	<developers>
         <developer>
             <id></id>
-            <name>Jan Niklas Hansen</name>
+            <name>Jan N. Hansen</name>
             <email>jan.hansen@uni-bonn.de</email>
-            <url>r</url>
+            <url>https://github.com/hansenjn</url>
             <organization></organization>
             <organizationUrl></organizationUrl>
             <roles>
@@ -65,12 +67,12 @@
 		</mailingList>
 	</mailingLists>
  	
-<!--  	<scm> -->
-<!-- 		<connection>scm:git:git://github.com/hansenjn/CiliaQ_Editor</connection> -->
-<!-- 		<developerConnection>scm:git:git@github.com:hansenjn/CiliaQ_Editor</developerConnection> -->
-<!-- 		<tag>HEAD</tag> -->
-<!-- 		<url>https://github.com/hansenjn/CiliaQ_Editor</url> -->
-<!-- 	</scm> -->
+ 	<scm>
+		<connection>scm:git:git://github.com/hansenjn/CiliaQ_Editor</connection>
+		<developerConnection>scm:git:git@github.com:hansenjn/CiliaQ_Editor</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/hansenjn/CiliaQ_Editor</url>
+	</scm>
  	
  	<issueManagement>
 		<system>GitHub Issues</system>
@@ -86,7 +88,7 @@
 		<package-name>ciliaQ_ed_jnh</package-name>
 		<license.licenseName>gpl_v3</license.licenseName>
 		<license.copyrightOwners>Jan Niklas Hansen.</license.copyrightOwners>
-		<license.projectName>CiliaQEditorJNH</license.projectName>
+		<license.projectName>CiliaQ Editor plugin for ImageJ.</license.projectName>
 	</properties>
  	 
     <dependencies>
@@ -123,9 +125,6 @@
 					</archive>
 				</configuration>
 			</plugin>
-			
-
 		</plugins>
-	</build>  
-    <name>CiliaQ_Editor</name>
+	</build>
 </project>

@@ -1,6 +1,6 @@
 package ciliaQ_ed_jnh;
 /** ===============================================================================
-* CiliaQ_Editor Version 0.0.3
+* CiliaQ_Editor Version 0.0.4
 * 
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU General Public License
@@ -14,7 +14,7 @@ package ciliaQ_ed_jnh;
 * See the GNU General Public License for more details.
 *  
 * Copyright (C) @author Jan Niklas Hansen
-* Date: May 16, 2020 (This Version: June 07, 2020)
+* Date: May 16, 2020 (This Version: January 08, 2023)
 *   
 * For any questions please feel free to contact me (jan.hansen@uni-bonn.de).
 * =============================================================================== */
@@ -32,7 +32,7 @@ import ij.text.*;
 public class CiliaQEdMain implements PlugIn, Measurements {
 	//Name variables
 	static final String PLUGINNAME = "CiliaQ Editor";
-	static final String PLUGINVERSION = "0.0.2";
+	static final String PLUGINVERSION = "0.0.4";
 	
 	//Fix fonts
 	static final Font SuperHeadingFont = new Font("Sansserif", Font.BOLD, 16);
