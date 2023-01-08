@@ -54,7 +54,8 @@ public class CiliaQEdMain implements PlugIn, Measurements {
 	private EditingDialog EdDialog;
 	
 	//-----------------define params for Dialog-----------------
-	int channelMask = 2, channelForCopying = 3;	
+	int channelMask = 2, channelForCopying = 3;
+	boolean copyZeroPixels = false;
 	static final String[] outputVariant = {"save as filename + suffix '_ed'", "save as filename + suffix 'ed' + date", "overwrite input file"};
 	String chosenOutputName = outputVariant[0];
 	//-----------------define params for Dialog-----------------
@@ -77,11 +78,17 @@ public void run(String arg) {
 	
 	gd.setInsets(10,0,0);	gd.addNumericField("Channel Nr of an unmodified/unsegmented copy of the same channel (>= 1 & <= nr of channels)", channelForCopying, 0);
 	gd.setInsets(0,20,0);	gd.addMessage("(This is the channel where selected data is copied from)", InstructionsFont);
+	
+	gd.setInsets(10,0,0);	gd.addCheckbox("Add pixels to mask even if intensity is 0.0 in the unsegmented copy of the channel", copyZeroPixels);
+	gd.setInsets(0,20,0);	gd.addMessage("(Caution: When using this option with semi-binary images, the pixels will receive an intensity of 1.0", InstructionsFont);
+	gd.setInsets(0,20,0);	gd.addMessage("in the semi-binarized channel even though their actual intensity was 0.0. Thus, in this case, do not", InstructionsFont);
+	gd.setInsets(0,20,0);	gd.addMessage("make use of 'reconstruction-channel'-intensity-parameters determined by CiliaQ later since they may", InstructionsFont);
+	gd.setInsets(0,20,0);	gd.addMessage("be minimally falsified.", InstructionsFont);
 		
 	gd.setInsets(10,0,0);	gd.addMessage("SAVING:", HeadingFont);	
 	gd.setInsets(5,0,0);	gd.addChoice("Output image name: ", outputVariant, chosenOutputName);
-	gd.setInsets(0,20,0);	gd.addMessage("Caution: If a file with the output filename already exists, the plugin will overwrite the file!", InstructionsFont);
-	gd.setInsets(-5,20,0);	gd.addMessage("Including the date in the name of the output file prevents overwriting.", InstructionsFont);
+	gd.setInsets(0,20,0);	gd.addMessage("(Caution: If a file with the output filename already exists, the plugin will overwrite the file!", InstructionsFont);
+	gd.setInsets(-5,20,0);	gd.addMessage("Including the date in the name of the output file prevents overwriting.)", InstructionsFont);
 		
 	gd.showDialog();
 	//show Dialog-----------------------------------------------------------------
@@ -89,6 +96,7 @@ public void run(String arg) {
 	//read and process variables--------------------------------------------------	
 	channelMask = (int) gd.getNextNumber();
 	channelForCopying = (int) gd.getNextNumber();
+	copyZeroPixels = gd.getNextBoolean();
 	chosenOutputName = gd.getNextChoice();	
 		
 	//read and process variables--------------------------------------------------
@@ -119,7 +127,7 @@ public void run(String arg) {
 	}
 	
 	//Do editing
-	EdDialog = new EditingDialog(imp, impCopy, channelMask, channelForCopying, chosenOutputName);
+	EdDialog = new EditingDialog(imp, impCopy, channelMask, channelForCopying, chosenOutputName, copyZeroPixels);
 	EdDialog.setLocation(0,0);
 	EdDialog.setVisible(true);
 	EdDialog.addWindowListener(new java.awt.event.WindowAdapter() {

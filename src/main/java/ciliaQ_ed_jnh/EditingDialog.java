@@ -29,7 +29,7 @@ import ij.text.TextPanel;
 
 public class EditingDialog extends javax.swing.JFrame implements ActionListener {
 	/** ===============================================================================
-	* Part of CiliaQ_Editor Version 0.0.3
+	* Part of CiliaQ_Editor Version 0.0.4
 	* 
 	* This program is free software; you can redistribute it and/or
 	* modify it under the terms of the GNU General Public License
@@ -43,7 +43,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	* See the GNU General Public License for more details.
 	*  
 	* Copyright (C) @author Jan Niklas Hansen
-	* Date: May 16, 2020 (This Version: June 07, 2020)
+	* Date: May 16, 2020 (This Version: January 08, 2023)
 	*   
 	* For any questions please feel free to contact me (jan.hansen@uni-bonn.de).
 	* =============================================================================== */
@@ -56,7 +56,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	static final int ERROR = 0, NOTIFICATION = 1, LOG = 2;;
 	JPanel bgPanel;
 	JLabel editings;
-	JButton addButton, removeButton, finishButton, cancelButton, undoButton;
+	JButton addButton, removeButton, addAllButton, removeAllButton, finishButton, cancelButton, undoButton;
 			
 	private ImagePlus imp;
 	private ImagePlus impCopy;
@@ -64,15 +64,17 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	private Date startDate;
 	private int mask, template;
 	private boolean binary = false;
+	private boolean copyZeroPx = false;
 	private LinkedList<Roi> rois;
 	private LinkedList<Boolean> added;
 	private LinkedList<Integer> slices;
 	private LinkedList<Integer> frames;
+	private LinkedList<Integer> addedTogether;
 	private KeyListener keyLis;
 
 	public boolean needWindowListener = false;
 	
-	public EditingDialog (ImagePlus image, ImagePlus imageCopy, int maskChannel, int templateChannel, String savingOption) {
+	public EditingDialog (ImagePlus image, ImagePlus imageCopy, int maskChannel, int templateChannel, String savingOption, boolean copyZeroPixels) {
 		super();
 		imp = image;
 		impCopy = imageCopy;
@@ -95,6 +97,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		
 		//If not binary but pixels not identical, throw error
 		if(!binary)	checkIdentical();
+		copyZeroPx = copyZeroPixels;
 
 		initKeyListener();
 		imp.getWindow().getCanvas().addKeyListener(keyLis);
@@ -103,7 +106,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	}
 	
 	private void initGUI() {
-		int prefXSize = 280, prefYSize = 350;
+		int prefXSize = 280, prefYSize = 410;
 		this.setMinimumSize(new java.awt.Dimension(prefXSize, prefYSize));
 		this.setSize(prefXSize, prefYSize);
 		this.setTitle(CiliaQEdMain.PLUGINNAME + " version " + CiliaQEdMain.PLUGINVERSION);
@@ -186,6 +189,42 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 				buttonPanel.setLayout(new BorderLayout());
 				buttonPanel.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
 				buttonPanel.add(removeButton);
+				bgPanel.add(buttonPanel);
+			}
+			{
+				addAllButton = new JButton();
+				addAllButton.addActionListener(this);
+				addAllButton.setText("add sel. to all slices (F3)");
+				addAllButton.setFont(CiliaQEdMain.TextFont);
+				addAllButton.setMinimumSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
+				addAllButton.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
+				addAllButton.setAlignmentX(CENTER_ALIGNMENT);
+				addAllButton.setAlignmentY(CENTER_ALIGNMENT);
+				addAllButton.setHorizontalAlignment(SwingConstants.CENTER);
+				addAllButton.setVerticalAlignment(SwingConstants.CENTER);
+				addAllButton.setVisible(true);
+				JPanel buttonPanel = new JPanel();
+				buttonPanel.setLayout(new BorderLayout());
+				buttonPanel.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
+				buttonPanel.add(addAllButton);
+				bgPanel.add(buttonPanel);
+			}
+			{
+				removeAllButton = new JButton();
+				removeAllButton.addActionListener(this);
+				removeAllButton.setText("remove sel. from all slices (F4)");
+				removeAllButton.setFont(CiliaQEdMain.TextFont);
+				removeAllButton.setMinimumSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
+				removeAllButton.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
+				removeAllButton.setAlignmentX(CENTER_ALIGNMENT);
+				removeAllButton.setAlignmentY(CENTER_ALIGNMENT);
+				removeAllButton.setHorizontalAlignment(SwingConstants.CENTER);
+				removeAllButton.setVerticalAlignment(SwingConstants.CENTER);
+				removeAllButton.setVisible(true);
+				JPanel buttonPanel = new JPanel();
+				buttonPanel.setLayout(new BorderLayout());
+				buttonPanel.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
+				buttonPanel.add(removeAllButton);
 				bgPanel.add(buttonPanel);
 			}
 			{
@@ -275,6 +314,10 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 					addRoi();
 				}else if(e.getKeyCode() == KeyEvent.VK_F2){
 					removeRoi();
+				}else if(e.getKeyCode() == KeyEvent.VK_F3){
+					addRoiAll();
+				}else if(e.getKeyCode() == KeyEvent.VK_F4){
+					removeRoiAll();
 				}
 				imp.updateAndRepaintWindow();
 				editings.setText("Editings performed: " + rois.size());
@@ -289,6 +332,10 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 			addRoi();
 		}else if (eventQuelle == removeButton){
 			removeRoi();
+		}else if (eventQuelle == addAllButton){
+			addRoiAll();
+		}else if (eventQuelle == removeAllButton){
+			removeRoiAll();
 		}else if (eventQuelle == undoButton){
 			undo();
 		}else if (eventQuelle == finishButton){
@@ -305,6 +352,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	private void undo(){
 		if(rois.size()>0){
+			//First we fill all pixels that were subjected to changes by adding or removing with their original intensities, retrieved from a copy of the image
 			for(int i = 0; i < rois.size(); i++){
 				Roi roi = rois.get(i);
 				int s = slices.get(i);
@@ -325,7 +373,10 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 				}
 			}
 			
-			removeLastRoi();			
+			//Now, we remove the ROI(s) from the list that need to be "undown"
+			removeLastRois();
+			
+			//Now we apply all copy paste steps again
 			for(int i = 0; i < rois.size(); i++){
 				if(added.get(i)){
 					copy(rois.get(i), slices.get(i), frames.get(i));
@@ -343,8 +394,21 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	private void addRoi(){
 		Roi roi = imp.getRoi();
 		if(!roi.equals(null)){
-	   		saveStep(roi, true, imp.getSlice(), imp.getFrame());
+	   		saveStep(roi, true, imp.getSlice(), imp.getFrame(), 1);
 			copy(roi, imp.getSlice(), imp.getFrame());
+		}
+		if(!undoButton.isEnabled()){
+			undoButton.setEnabled(true);
+		}
+	}
+	
+	private void addRoiAll(){
+		Roi roi = imp.getRoi();
+		if(!roi.equals(null)){
+	   		saveStepToMultipleSlices(roi, true, 1, imp.getNSlices(), imp.getFrame());
+	   		for(int s = 1; s <= imp.getNSlices(); s++) {
+	   			copy(roi, s, imp.getFrame());
+	   		}
 		}
 		if(!undoButton.isEnabled()){
 			undoButton.setEnabled(true);
@@ -354,8 +418,21 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	private void removeRoi(){
 		Roi roi = imp.getRoi();
 		if(!roi.equals(null)){
-	   		saveStep(roi, false, imp.getSlice(), imp.getFrame());
+	   		saveStep(roi, false, imp.getSlice(), imp.getFrame(), 1);
 			remove(roi, imp.getSlice(), imp.getFrame());
+		}
+		if(!undoButton.isEnabled()){
+			undoButton.setEnabled(true);
+		}
+	}
+	
+	private void removeRoiAll(){
+		Roi roi = imp.getRoi();
+		if(!roi.equals(null)){
+	   		saveStepToMultipleSlices(roi, false, 1, imp.getNSlices(), imp.getFrame());
+			for(int s = 1; s <= imp.getNSlices(); s++) {
+				remove(roi, s, imp.getFrame());				
+			}
 		}
 		if(!undoButton.isEnabled()){
 			undoButton.setEnabled(true);
@@ -433,12 +510,16 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
    				if(y < 0) y = 0;
    				if(roi.contains(x, y)){
    					if(binary){
-   						if(imp.getStack().getVoxel(x, y, indexCopy) != 0.0){
-   	   	   					imp.getStack().setVoxel(x, y, indexPaste, max);   							
-   						}   						
+   						if(imp.getStack().getVoxel(x, y, indexCopy) != 0.0 || copyZeroPx){
+   	   	   					imp.getStack().setVoxel(x, y, indexPaste, max);
+   						}
    					}else{
-   	   					imp.getStack().setVoxel(x, y, indexPaste,
-   	   						imp.getStack().getVoxel(x, y, indexCopy));
+   						if(imp.getStack().getVoxel(x, y, indexCopy) == 0.0 && copyZeroPx){
+   							imp.getStack().setVoxel(x, y, indexPaste, 1.0);
+   						}else {
+   							imp.getStack().setVoxel(x, y, indexPaste,
+   									imp.getStack().getVoxel(x, y, indexCopy));
+   						}
    					}
    				}
 			}	
@@ -459,18 +540,35 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		}
 	}
 	
-	private void saveStep(Roi roi, boolean add, int slice, int frame){
+	private void saveStep(Roi roi, boolean add, int slice, int frame, int addTogether){
 		rois.add((Roi)((Object)roi.clone()));
 		added.add(add);
 		slices.add(slice);
 		frames.add(frame);
+		addedTogether.add(addTogether);
 	}
 	
-	private void removeLastRoi(){
-		rois.remove(rois.size()-1);
-		added.remove(added.size()-1);
-		slices.remove(slices.size()-1);
-		frames.remove(frames.size()-1);
+	private void saveStepToMultipleSlices(Roi roi, boolean add, int sliceMin, int sliceMax, int frame) {
+		for(int s = sliceMin; s <= sliceMax; s++) {
+			saveStep(roi,add,s,frame, sliceMax-sliceMin+1);
+		}
+	}
+	
+	private void removeLastRois(){
+		int at = 1;
+		if(addedTogether.get(addedTogether.size()-1) <= 0){
+			IJ.error("Error when applying undo action! Report error to developer please!");
+		}else if(addedTogether.get(addedTogether.size()-1) > 1){
+			at = addedTogether.get(addedTogether.size()-1);
+			
+		}
+		for(int i = 0; i < at; i++) {
+			rois.remove(rois.size()-1);
+			added.remove(added.size()-1);
+			slices.remove(slices.size()-1);
+			frames.remove(frames.size()-1);
+			addedTogether.remove(addedTogether.size()-1);				
+		}
 	}
 	
 	private String outputPath(String chosenOutputName){
