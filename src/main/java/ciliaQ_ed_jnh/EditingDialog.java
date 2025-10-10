@@ -19,12 +19,22 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
 
+//For the sliders
+import javax.swing.JSlider;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.border.TitledBorder;
+
+import ij.CompositeImage;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
+import ij.gui.WaitForUserDialog;
 import ij.gui.YesNoCancelDialog;
 import ij.io.FileInfo;
 import ij.io.RoiEncoder;
+import ij.process.ImageProcessor;
+import ij.process.LUT;
 import ij.text.TextPanel;
 
 public class EditingDialog extends javax.swing.JFrame implements ActionListener {
@@ -43,7 +53,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	* See the GNU General Public License for more details.
 	*  
 	* Copyright (C) @author Jan Niklas Hansen
-	* Date: May 16, 2020 (This Version: January 08, 2023)
+	* Date: May 16, 2020 (This Version: October 10, 2025)
 	*   
 	* For any questions please feel free to contact me (jan.hansen@uni-bonn.de).
 	* =============================================================================== */
@@ -59,6 +69,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	JButton addButton, removeButton, addAllButton, removeAllButton, finishButton, cancelButton, undoButton;
 			
 	private ImagePlus imp;
+	private LUT imageLUTs []; // To store the original LUTs to which later can be reverted. 
 	private ImagePlus impCopy;
 	private String dir, name, outputPath;
 	private Date startDate;
@@ -69,16 +80,23 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	private LinkedList<Boolean> added;
 	private LinkedList<Integer> slices;
 	private LinkedList<Integer> frames;
-	private LinkedList<Integer> addedTogether;
+	private LinkedList<Integer> addedTogether;	// This variable is marks how many consecutive ROIs were applied together (e.g. in different slices whihc is important for doing a multi-slice undo operation
 	private KeyListener keyLis;
 
 	public boolean needWindowListener = false;
 	
+	//For the sliders
+//	private JSlider maskMinSlider;
+	private JSlider maskMaxSlider, templateMinSlider, templateMaxSlider;
+	private final int SLIDER_MIN = 0;
+	private final int SLIDER_MAX = 100;
+	private int sliderStart;
+	
 	public EditingDialog (ImagePlus image, ImagePlus imageCopy, int maskChannel, int templateChannel, String savingOption, boolean copyZeroPixels) {
 		super();
-		imp = image;
+		imp = image;			
 		impCopy = imageCopy;
-		
+				
 		FileInfo info = imp.getOriginalFileInfo();
 		name = info.fileName;
 		dir = info.directory;
@@ -91,6 +109,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		added = new LinkedList<Boolean>();
 		slices = new LinkedList<Integer>();
 		frames = new LinkedList<Integer>();
+		addedTogether = new LinkedList<Integer>();
 				
 		//Test if binary
 		checkBinary();
@@ -98,16 +117,22 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		//If not binary but pixels not identical, throw error
 		if(!binary)	checkIdentical();
 		copyZeroPx = copyZeroPixels;
-
+		
 		initKeyListener();
 		imp.getWindow().getCanvas().addKeyListener(keyLis);
 		imp.getWindow().addKeyListener(keyLis);
+		
+		//Retrieve the LUTs and store them, change color of the channels for best overlap visualization, revert colors when finished.
+		imp.setDisplayMode(IJ.COMPOSITE);
+		imageLUTs = imp.getLuts();
+		changeLUTsForVisualization();
+		
 		initGUI();	
 	}
 	
 	private void initGUI() {
-		int prefXSize = 280, prefYSize = 410;
-		this.setMinimumSize(new java.awt.Dimension(prefXSize, prefYSize));
+		int prefXSize = 400, prefYSize = 510;
+		this.setMinimumSize(new java.awt.Dimension(280, prefYSize));
 		this.setSize(prefXSize, prefYSize);
 		this.setTitle(CiliaQEdMain.PLUGINNAME + " version " + CiliaQEdMain.PLUGINVERSION);
 		getContentPane().setSize(prefXSize,prefYSize);
@@ -128,10 +153,27 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 			scroll.setVisible(true);
 			{
 				JTextPane reference = new JTextPane();
-				reference.setText("**Info**\nCiliaQ Editor is an ImageJ plugin by Jan N. Hansen (\u00a9 2020). "
-						+ "How to cite and use: https://github.com/hansenjn/CiliaQ_Editor\n"
-						+ "\n**Manual**\nDraw a selection/Roi where you want to correct the mask and press add selection or F1 to add the pixels in the"
-						+ " selection to the mask or press remove selection or F2 to remove the pixels in the selection from the mask.");
+				reference.setText("**Info**\nCiliaQ Editor is an ImageJ plugin by Jan N. Hansen (\u00a9 2025). "
+					    + "How to cite and use: https://github.com/hansenjn/CiliaQ_Editor\n"
+					    + "\n**Manual**\n"					    
+					    + "Draw a selection/ROI where you want to correct the mask and use one of the following options:\n"					
+					    + "- Press 'add selection' (F1) - Add pixels in the selection to the mask\n"					
+					    + "- Press 'remove selection' (F2) - Remove pixels in the selection from the mask\n"					
+					    + "- Press 'add sel. to all slices' (F3) - Add selection to mask across all Z-slices\n"					
+					    + "- Press 'remove sel. from all slices' (F4) - Remove selection from mask across all Z-slices. "					    
+					    + "  WARNING: Make sure that you do not accidentally remove or connect cilia in other Z-slices if you add or remove selections in the whole stack.\n"				
+					    + "- Press 'undo last editing' (Ctrl+Z) - Revert the last edit made\n\n"	
+					
+					    + "**Display Settings**\n"
+					    + "For better visualization, the mask channel is shown in Magenta and the template in Green.\n"
+					    + "The mask display range is set to 0-5 and the template to 0-99.9th percentile.\n"
+					    + "When you save your editing or abort editing, the colors will be reverted to the original colors.\n"
+					    + "You can use the sliders below to adjust the intensity display range for your convenience.\n\n"
+					    
+					    + "When finished, press 'finish analysis & save editings' to save your work;\n"								
+					    + "In turn, the plugin will create a new file with ending _Ed and metadata about the changes you applied.\n"		
+					    + "To discard all changes, press 'abort analysis & discard editings'.\n");
+				
 				reference.setFont(CiliaQEdMain.TextFont);
 				reference.setVisible(true);
 				reference.setEditable(false);
@@ -247,6 +289,83 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 				bgPanel.add(buttonPanel);
 			}
 		}
+		
+		{
+			JPanel spacer = new JPanel();
+			spacer.setMaximumSize(new java.awt.Dimension(prefXSize,10));
+			spacer.setVisible(true);
+			bgPanel.add(spacer);
+		}
+		
+		//Sliders
+		{
+			{
+			    // Mask channel intensity sliders
+			    JPanel maskSliderPanel = new JPanel();
+			    maskSliderPanel.setLayout(new BoxLayout(maskSliderPanel, BoxLayout.Y_AXIS));
+			    maskSliderPanel.setBorder(new TitledBorder("Segmented channel (ID=" + mask + ") - Display Range (Min fixed to 0)"));
+			    	
+//			    JPanel maskMinPanel = new JPanel(new BorderLayout());
+//			    maskMinPanel.add(new JLabel("Min: "), BorderLayout.WEST);
+//			    maskMinSlider = new JSlider(JSlider.HORIZONTAL, SLIDER_MIN, SLIDER_MAX, SLIDER_MIN);
+//			    maskMinSlider.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth() - 60, 25));
+//			    maskMinSlider.addChangeListener(new ChangeListener() {
+//			        public void stateChanged(ChangeEvent e) {
+//			            updateMaskDisplayRange();
+//			        }
+//			    });	
+//			    maskMinPanel.add(maskMinSlider, BorderLayout.CENTER);
+//			    maskSliderPanel.add(maskMinPanel);
+		
+			    JPanel maskMaxPanel = new JPanel(new BorderLayout());	
+			    maskMaxPanel.add(new JLabel("Max: "), BorderLayout.WEST);	
+			    maskMaxSlider = new JSlider(JSlider.HORIZONTAL, SLIDER_MIN, SLIDER_MAX, 5);	
+			    maskMaxSlider.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth() - 60, 25));	
+			    maskMaxSlider.addChangeListener(new ChangeListener() {	
+			        public void stateChanged(ChangeEvent e) {	
+			            updateMaskDisplayRange();	
+			        }	
+			    });	
+			    maskMaxPanel.add(maskMaxSlider, BorderLayout.CENTER);	
+			    maskSliderPanel.add(maskMaxPanel);			    
+		
+			    bgPanel.add(maskSliderPanel);	
+			}		
+			{	
+			    // Template channel intensity sliders	
+			    JPanel templateSliderPanel = new JPanel();	
+			    templateSliderPanel.setLayout(new BoxLayout(templateSliderPanel, BoxLayout.Y_AXIS));	
+			    templateSliderPanel.setBorder(new TitledBorder("Unsegmented channel (ID=" + template + ") - Display Range"));	
+			    	
+			    JPanel templateMinPanel = new JPanel(new BorderLayout());	
+			    templateMinPanel.add(new JLabel("Min: "), BorderLayout.WEST);	
+			    templateMinSlider = new JSlider(JSlider.HORIZONTAL, SLIDER_MIN, SLIDER_MAX, SLIDER_MIN);	
+			    templateMinSlider.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth() - 60, 25));	
+			    templateMinSlider.addChangeListener(new ChangeListener() {	
+			        public void stateChanged(ChangeEvent e) {	
+			            updateTemplateDisplayRange();	
+			        }	
+			    });	
+			    templateMinPanel.add(templateMinSlider, BorderLayout.CENTER);	
+			    templateSliderPanel.add(templateMinPanel);		    
+		
+			    JPanel templateMaxPanel = new JPanel(new BorderLayout());	
+			    templateMaxPanel.add(new JLabel("Max: "), BorderLayout.WEST);
+			    imp.setC(template);
+			    templateMaxSlider = new JSlider(JSlider.HORIZONTAL, SLIDER_MIN, SLIDER_MAX, sliderStart);	
+			    templateMaxSlider.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth() - 60, 25));	
+			    templateMaxSlider.addChangeListener(new ChangeListener() {	
+			        public void stateChanged(ChangeEvent e) {	
+			            updateTemplateDisplayRange();	
+			        }	
+			    });	
+			    templateMaxPanel.add(templateMaxSlider, BorderLayout.CENTER);	
+			    templateSliderPanel.add(templateMaxPanel);
+		  
+			    bgPanel.add(templateSliderPanel);	
+			}
+		}
+		
 		{
 			JPanel spacer = new JPanel();
 			spacer.setMaximumSize(new java.awt.Dimension(prefXSize,10));
@@ -327,27 +446,48 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	@Override
 	public void actionPerformed(ActionEvent ae) {
-		Object eventQuelle = ae.getSource();
-		if (eventQuelle == addButton){
-			addRoi();
-		}else if (eventQuelle == removeButton){
-			removeRoi();
-		}else if (eventQuelle == addAllButton){
-			addRoiAll();
-		}else if (eventQuelle == removeAllButton){
-			removeRoiAll();
-		}else if (eventQuelle == undoButton){
-			undo();
-		}else if (eventQuelle == finishButton){
-			YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - finish?","Do you want to finish editing and save the results?");
-			if(ync.yesPressed()){
-				saveAndClose();
+		Object eventSource = ae.getSource();
+//	    IJ.log("Action event received from: " + eventSource);		
+	    try {
+	    	if (eventSource == addButton){
+				addRoi();
+			}else if (eventSource == removeButton){
+				removeRoi();
+			}else if (eventSource == addAllButton){
+				addRoiAll();
+			}else if (eventSource == removeAllButton){
+				removeRoiAll();
+			}else if (eventSource == undoButton){
+				undo();
+			}else if (eventSource == finishButton){
+				YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - finish?","Do you want to finish editing and save the results?");
+				if(ync.yesPressed()){
+					restoreOriginalLUTs(); // switch back changed color schemes
+					saveAndClose();
+				}			
+			}else if (eventSource == cancelButton){
+				this.restoreOriginalLUTs(); // switch back color schemes
+				cancel();				
+			}else {
+				IJ.log("Unknown source: " + eventSource);
+			}
+	    	
+		    
+			imp.updateAndRepaintWindow();
+			imp.updateAndDraw();
+			editings.setText("Editings performed: " + rois.size());
+			
+			bgPanel.revalidate();
+			bgPanel.repaint();
+	    } catch (Exception ex) {
+	        IJ.log("Exception in button action - Message: " + ex.getMessage());
+	        IJ.log("Exception in button action - Localized Message: " + ex.getLocalizedMessage());
+	        String out = "";
+			for(int err = 0; err < ex.getStackTrace().length; err++){
+				out += " \n " + ex.getStackTrace()[err].toString();
 			}			
-		}else if (eventQuelle == cancelButton){
-			cancel();				
-		}
-		imp.updateAndRepaintWindow();
-		editings.setText("Editings performed: " + rois.size());
+			IJ.log("Exception in button action. Stack trace:\n" + out);
+	    }		
 	}
 	
 	private void undo(){
@@ -393,7 +533,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	private void addRoi(){
 		Roi roi = imp.getRoi();
-		if(!roi.equals(null)){
+		if(roi != null){
 	   		saveStep(roi, true, imp.getSlice(), imp.getFrame(), 1);
 			copy(roi, imp.getSlice(), imp.getFrame());
 		}
@@ -404,7 +544,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	private void addRoiAll(){
 		Roi roi = imp.getRoi();
-		if(!roi.equals(null)){
+		if(roi != null){
 	   		saveStepToMultipleSlices(roi, true, 1, imp.getNSlices(), imp.getFrame());
 	   		for(int s = 1; s <= imp.getNSlices(); s++) {
 	   			copy(roi, s, imp.getFrame());
@@ -417,7 +557,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	private void removeRoi(){
 		Roi roi = imp.getRoi();
-		if(!roi.equals(null)){
+		if(roi != null){
 	   		saveStep(roi, false, imp.getSlice(), imp.getFrame(), 1);
 			remove(roi, imp.getSlice(), imp.getFrame());
 		}
@@ -428,7 +568,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	
 	private void removeRoiAll(){
 		Roi roi = imp.getRoi();
-		if(!roi.equals(null)){
+		if(roi != null){
 	   		saveStepToMultipleSlices(roi, false, 1, imp.getNSlices(), imp.getFrame());
 			for(int s = 1; s <= imp.getNSlices(); s++) {
 				remove(roi, s, imp.getFrame());				
@@ -652,5 +792,196 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		}
 		CiliaQEdMain.addFooter(tp, startDate);		
 		tp.saveAs(path + ".txt");
+	}
+	
+
+	// Change LUTs for specific channels (mask to Magenta, template to Green)
+	private void changeLUTsForVisualization() {
+	    // Check if image is composite
+	    CompositeImage ci = null;
+	    if (imp.isComposite()) {
+	        ci = (CompositeImage) imp;
+	    }else {
+	    	new WaitForUserDialog("Could not switch colors automatically since no composite image.").show();
+	    	return;
+	    }
+
+	    // Create Magenta LUT for mask channel
+	    byte[] rMask = new byte[256];
+	    byte[] gMask = new byte[256];
+	    byte[] bMask = new byte[256];
+	    for (int i=0; i<256; i++) {
+	        rMask[i] = (byte)i;
+	        gMask[i] = 0;
+	        bMask[i] = (byte)i;
+	    }
+	    LUT maskLut = new LUT(rMask, gMask, bMask);
+
+	    // Create Green LUT for template channel
+	    byte[] rTemplate = new byte[256];
+	    byte[] gTemplate = new byte[256];
+	    byte[] bTemplate = new byte[256];
+
+	    for (int i=0; i<256; i++) {
+	        rTemplate[i] = 0;
+	        gTemplate[i] = (byte)i;
+	        bTemplate[i] = 0;
+	    }
+	    LUT templateLut = new LUT(rTemplate, gTemplate, bTemplate);
+	    
+	    // Apply LUTs
+	    if (ci != null) {
+	        ci.setChannelLut(maskLut, mask);
+	        ci.setChannelLut(templateLut, template);
+	        ci.updateAndDraw();
+	    }
+	    
+	    // Optimize display range for mask channel
+	    if (ci != null) {
+	    	 // Store current position
+	        int currentChannel = ci.getChannel();
+	        int currentSlice = ci.getSlice();
+	        int currentFrame = ci.getFrame();
+	        
+	        // Set to mask channel
+	        ci.setPosition(mask, currentSlice, currentFrame);	        
+
+	        // Set display range to 0-1
+	        ci.setDisplayRange(0.0, 5.0);
+	        ci.updateAndDraw();
+
+	        // Set to template channel
+	        ci.setPosition(template, currentSlice, currentFrame);	        
+
+	        // Calculate and store the percentile value for template slider scaling
+	        double percValue = calculatePercentileValue(ci.getProcessor(), 99.9);
+	        sliderStart = (int) (percValue / (Math.pow(2.0, imp.getBitDepth())-1) * 100.0);
+	        ci.setDisplayRange(0.0, percValue);
+	        ci.updateAndDraw();
+	        
+	        // Restore original position
+	        ci.setPosition(currentChannel, currentSlice, currentFrame);
+	    }        
+	}
+
+	// Restore original LUTs before saving
+	private void restoreOriginalLUTs() {
+	    if (imp.isComposite()) {
+	        CompositeImage ci = (CompositeImage) imp;
+	        for (int c = 0; c < imageLUTs.length; c++) {
+	            ci.setChannelLut(imageLUTs[c], c+1);
+	        }
+	        ci.updateAndDraw();
+	    } else if (imageLUTs.length > 0) {
+	        // For single channel images (unlikely to happen but lets keep this metehod general)
+	        imp.setLut(imageLUTs[0]);
+	    }
+	}
+	
+	/**
+	 * Calculates the pixel value at the specified percentile in an image
+	 *
+	 * @param ip The ImageProcessor containing the pixel data
+	 * @param percentile The percentile to find (0-100)
+	 * @return The pixel value at the specified percentile
+	 */
+	private static double calculatePercentileValue(ImageProcessor ip, double percentile) {
+	    // Get image histogram
+	    int[] histogram = ip.getHistogram();
+	    int histogramLength = histogram.length;	    
+
+	    // Calculate the total number of pixels
+	    long totalPixels = 0;
+	    for (int i = 0; i < histogramLength; i++) {
+	        totalPixels += histogram[i];
+	    }	    
+
+	    // Calculate the number of pixels below the percentile
+	    long pixelsBelow = (long)(totalPixels * percentile / 100.0);	    
+
+	    // Find the pixel value at the percentile
+	    long count = 0;
+	    int percentileValue = 0;
+	    for (int i = 0; i < histogramLength; i++) {
+	        count += histogram[i];
+	        if (count >= pixelsBelow) {
+	            percentileValue = i;
+	            break;
+	        }
+	    }
+
+	    return percentileValue;
+	}
+	
+	private void updateMaskDisplayRange() {
+	    if (imp.isComposite()) {
+	        CompositeImage ci = (CompositeImage) imp;
+	        
+	        // Store current position
+	        int currentChannel = ci.getChannel();
+	        int currentSlice = ci.getSlice();
+	        int currentFrame = ci.getFrame();
+
+	        // Calculate min and max values
+//	        double min = maskMinSlider.getValue();  // 0-5 scale
+	        double min = 0.0;
+	        double max = maskMaxSlider.getValue();  // 0-5 scale
+
+//	        if (min >= max) {
+//	        	min = max;
+//	            maskMinSlider.setValue((int)max); // Update slider without triggering listener
+//	        }
+	        
+//	        min *= (Math.pow(2.0, imp.getBitDepth())-1)/100.0;
+	        max *= (Math.pow(2.0, imp.getBitDepth())-1)/100.0;
+	        
+	        // Do not allow max < 1 to avoid that mask disappears
+	        if(max < 1.0) max = 1.0;
+
+	        // Set to mask channel
+	        ci.setPosition(mask, currentSlice, currentFrame);
+
+	        // Set display range
+	        ci.setDisplayRange(min, max);
+	        ci.updateAndDraw();
+	        
+	        // Restore original position
+	        ci.setPosition(currentChannel, currentSlice, currentFrame);
+	    }
+	}
+
+	private void updateTemplateDisplayRange() {
+	    if (imp.isComposite()) {
+	        CompositeImage ci = (CompositeImage) imp;
+
+	        // Store current position
+	        int currentChannel = ci.getChannel();
+	        int currentSlice = ci.getSlice();
+	        int currentFrame = ci.getFrame();
+	        
+
+	        // Calculate min and max values (0-templateMaxValue)
+	        double min = templateMinSlider.getValue();
+	        double max = templateMaxSlider.getValue(); 
+
+	        if (min >= max) {
+	            min = max;
+	            templateMinSlider.setValue((int)(max));
+	        }
+	        
+	        min *= (Math.pow(2.0, imp.getBitDepth())-1)/100.0;
+	        max *= (Math.pow(2.0, imp.getBitDepth())-1)/100.0;
+       
+	        // Set to template channel
+	        ci.setPosition(template, currentSlice, currentFrame);
+
+	        // Set display range
+	        ci.setDisplayRange(min, max);
+	        ci.updateAndDraw();
+
+	        // Restore original position
+	        ci.setPosition(currentChannel, currentSlice, currentFrame);
+	    }
+
 	}
 }
