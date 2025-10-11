@@ -170,8 +170,9 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 					    + "When you save your editing or abort editing, the colors will be reverted to the original colors.\n"
 					    + "You can use the sliders below to adjust the intensity display range for your convenience.\n\n"
 					    
-					    + "When finished, press 'finish analysis & save editings' to save your work;\n"								
-					    + "In turn, the plugin will create a new file with ending _Ed and metadata about the changes you applied.\n"		
+					    + "When finished, press 'finish analysis & save editings' to save your work;"								
+					    + " In turn, the plugin will create a new file including your changes named <input image name>_ed.tif, a metadata file named <input image name>_ed.txt,"
+					    + " and a folder named <input image name>_ed containing all ROIs that you set.\n"		
 					    + "To discard all changes, press 'abort analysis & discard editings'.\n");
 				
 				reference.setFont(CiliaQEdMain.TextFont);
