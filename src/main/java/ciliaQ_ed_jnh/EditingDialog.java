@@ -778,6 +778,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 		tp.append("Image name:	" + name);
 		tp.append("Channel Nr of channel that is segmented / semi-binarized / binarized (>= 1 & <= nr of channels):	" + mask);
 		tp.append("Channel Nr of an unmodified/unsegmented copy of the same channel (>= 1 & <= nr of channels):	" + template);
+		tp.append("Add pixels to mask even if intensity is 0.0 in the unsegmented copy of the channel:	" + copyZeroPx);
 		tp.append("Number of edits:	" +  rois.size());
 		tp.append("Individual edits:	Roi nr	added/removed	slice	frame");
 		String appText;

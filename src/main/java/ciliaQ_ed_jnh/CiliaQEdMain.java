@@ -55,7 +55,7 @@ public class CiliaQEdMain implements PlugIn, Measurements {
 	
 	//-----------------define params for Dialog-----------------
 	int channelMask = 2, channelForCopying = 3;
-	boolean copyZeroPixels = true;
+	boolean copyZeroPixels = false;
 	static final String[] outputVariant = {"save as filename + suffix '_ed'", "save as filename + suffix 'ed' + date", "overwrite input file"};
 	String chosenOutputName = outputVariant[0];
 	//-----------------define params for Dialog-----------------
@@ -93,7 +93,7 @@ public void run(String arg) {
 	gd.setInsets(0,20,0);	gd.addMessage("(Caution: When using this option with semi-binary images, the pixels will receive an intensity of 1.0", InstructionsFont);
 	gd.setInsets(0,20,0);	gd.addMessage("in the semi-binarized channel even though their actual intensity was 0.0. Thus, in this case, do not", InstructionsFont);
 	gd.setInsets(0,20,0);	gd.addMessage("make use of 'reconstruction-channel'-intensity-parameters determined by CiliaQ later since they may", InstructionsFont);
-	gd.setInsets(0,20,0);	gd.addMessage("be minimally falsified.", InstructionsFont);
+	gd.setInsets(0,20,0);	gd.addMessage("be minimally falsified.)", InstructionsFont);
 		
 	gd.setInsets(10,0,0);	gd.addMessage("SAVING:", HeadingFont);	
 	gd.setInsets(5,0,0);	gd.addChoice("Output image name: ", outputVariant, chosenOutputName);
