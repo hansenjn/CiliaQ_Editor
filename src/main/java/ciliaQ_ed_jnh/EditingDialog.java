@@ -861,7 +861,9 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	        
 	        // Restore original position
 	        ci.setPosition(currentChannel, currentSlice, currentFrame);
-	    }        
+	        
+	        setVisibleChannels(true,true);
+	    }
 	}
 
 	// Restore original LUTs before saving
@@ -982,6 +984,43 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 	        // Restore original position
 	        ci.setPosition(currentChannel, currentSlice, currentFrame);
 	    }
+	}
+	
+	/**
+	 * Shows only the mask and/or template channels
+	 * 
+	 * @param showMask Whether to show the mask channel
+	 * @param showTemplate Whether to show the template channel
+	 */
+	private void setVisibleChannels(boolean showMask, boolean showTemplate) {
+	    if (!imp.isComposite()) {
+	        IJ.showMessage("Not a composite image", "This function requires a multi-channel composite image.");
+	        return;
+	    }
 
+	    CompositeImage ci = (CompositeImage) imp;
+	    int nChannels = imp.getNChannels();	    
+
+	    // Create a string of '0's with the right length
+	    StringBuilder channelString = new StringBuilder();
+	    for (int i = 0; i < nChannels; i++) {
+	        channelString.append('0');
+	    }	    
+
+	    // Set the mask and template channels to '1' as needed
+	    if (showMask && mask <= nChannels) {
+	        channelString.setCharAt(mask - 1, '1');  // Convert from 1-based to 0-based
+	    }
+   
+
+	    if (showTemplate && template <= nChannels) {
+	        channelString.setCharAt(template - 1, '1');  // Convert from 1-based to 0-based
+	    }	    
+
+	    // Apply the channel visibility
+	    ci.setActiveChannels(channelString.toString());	    
+
+	    // Update display
+	    ci.updateAndDraw();
 	}
 }
