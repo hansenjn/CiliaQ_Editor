@@ -167,13 +167,13 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 					    + "**Display Settings**\n"
 					    + "For better visualization, the mask channel is shown in Magenta and the template in Green.\n"
 					    + "The mask display range is set to 0-5 and the template to 0-99.9th percentile.\n"
-					    + "When you save your editing or abort editing, the colors will be reverted to the original colors.\n"
+					    + "When you save your editing or cancel editing, the colors will be reverted to the original colors.\n"
 					    + "You can use the sliders below to adjust the intensity display range for your convenience.\n\n"
 					    
 					    + "When finished, press 'finish analysis & save editings' to save your work;"								
 					    + " In turn, the plugin will create a new file including your changes named <input image name>_ed.tif, a metadata file named <input image name>_ed.txt,"
 					    + " and a folder named <input image name>_ed containing all ROIs that you set.\n"		
-					    + "To discard all changes, press 'abort analysis & discard editings'.\n");
+					    + "To discard all changes, press 'cancel analysis & discard editings'.\n");
 				
 				reference.setFont(CiliaQEdMain.TextFont);
 				reference.setVisible(true);
@@ -395,7 +395,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 			{
 				cancelButton = new JButton();
 				cancelButton.addActionListener(this);
-				cancelButton.setText("abort analysis & discard editings");
+				cancelButton.setText("cancel analysis & discard editings");
 				cancelButton.setFont(CiliaQEdMain.BoldFont);
 				cancelButton.setMinimumSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
 				cancelButton.setPreferredSize(new java.awt.Dimension(bgPanel.getWidth(), locHeight));
@@ -604,7 +604,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 
 	public void cancel(){
 		if(rois.size()!=0){
-			YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - abort?","Do you really wish to stop editing without saving changes?");
+			YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - cancel?","Do you really wish to stop editing without saving changes?");
 			if(ync.yesPressed()){
 				running = false;
 			}
@@ -618,7 +618,7 @@ public class EditingDialog extends javax.swing.JFrame implements ActionListener 
 			running = false;
 			return;
 		}
-		YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - abort?","You closed the image.\nRestore the image with editings to continue editing (Yes, Cancel)?\nOr stop editing without saving editings (No)?");
+		YesNoCancelDialog ync = new YesNoCancelDialog(this,"CiliaQ Editor - cancel?","You closed the image.\nRestore the image with editings to continue editing (Yes, Cancel)?\nOr stop editing without saving editings (No)?");
 		if(!ync.yesPressed() && !ync.cancelPressed()){
 			running = false;
 		}else{

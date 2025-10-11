@@ -61,7 +61,7 @@ public class CiliaQEdMain implements PlugIn, Measurements {
 	//-----------------define params for Dialog-----------------
 	
 public void run(String arg) {
-	// Aborts if no image open
+	// Cancels if no image open
 	if(WindowManager.getCurrentImage() == null) {
 		IJ.error("No image open.");
 		return;
